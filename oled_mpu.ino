@@ -9,8 +9,8 @@
 // WIFI & HTTP SERVER CONFIGURATION
 // ============================================================
 
-const char* WIFI_SSID = "Tirth";
-const char* WIFI_PASSWORD = "11102010";
+const char* WIFI_SSID = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 WiFiServer server(80);
 
@@ -359,7 +359,6 @@ mpuLabel.position.set(0, 0.6, 0.8);
 mpuLabel.rotation.x = -Math.PI / 2;
 boardGroup.add(mpuLabel);
 
-// Enhanced Hologram: OLED Screen on the right side of the breadboard
 const oledGeometry = new THREE.BoxGeometry(1.6, 0.20, 1.0);
 const oledScreen = createHoloObject(oledGeometry, 0x001133, 0x00ffcc, 0.8);
 oledScreen.position.set(3.5, 0.35, 0);
@@ -546,56 +545,47 @@ void updateOrientation() {
 }
 
 // ============================================================
-// OLED 3D CUBOID RENDERER (ENLARGED FOR BETTER VISIBILITY)
+// OLED 3D CUBOID RENDERER
 // ============================================================
 
 void draw3DCuboid(float rDeg, float pDeg) {
-  // Center of the OLED area
   float cx = 64;
-  float cy = 32;          // half of 64px height
+  float cy = 32;
 
-  // Enlarge the cuboid (double the original size)
-  float w = 36 * 2;       // width  -> doubled
-  float h = 12 * 2;       // height -> doubled
-  float d = 20 * 2;       // depth  -> doubled
+  float w = 36 * 2;
+  float h = 12 * 2;
+  float d = 20 * 2;
 
   float r = rDeg * PI / 180.0;
   float p = pDeg * PI / 180.0;
 
-  // 8 corners of the cuboid (local space)
   float pts[8][3] = {
     {-w/2, -h/2, -d/2}, { w/2, -h/2, -d/2}, { w/2,  h/2, -d/2}, {-w/2,  h/2, -d/2},
     {-w/2, -h/2,  d/2}, { w/2, -h/2,  d/2}, { w/2,  h/2,  d/2}, {-w/2,  h/2,  d/2}
   };
 
-  // Project 3D points to 2D screen space
   int proj[8][2];
   for (int i = 0; i < 8; i++) {
     float x = pts[i][0];
     float y = pts[i][1];
     float z = pts[i][2];
 
-    // Apply pitch (rotation around X-axis)
     float y1 = y * cos(p) - z * sin(p);
     float z1 = y * sin(p) + z * cos(p);
 
-    // Apply roll (rotation around Y-axis)
     float x2 = x * cos(r) - y1 * sin(r);
     float y2 = x * sin(r) + y1 * cos(r);
 
-    // Translate to screen centre
     proj[i][0] = (int)(cx + x2);
     proj[i][1] = (int)(cy + y2);
   }
 
-  // 12 edges of the cuboid
   int edges[12][2] = {
     {0,1},{1,2},{2,3},{3,0},
     {4,5},{5,6},{6,7},{7,4},
     {0,4},{1,5},{2,6},{3,7}
   };
 
-  // Draw each edge as a single pixel line
   for (int i = 0; i < 12; i++) {
     int x1 = proj[edges[i][0]][0];
     int y1 = proj[edges[i][0]][1];
@@ -608,7 +598,6 @@ void draw3DCuboid(float rDeg, float pDeg) {
 void drawOLED() {
   display.clearDisplay();
 
-  // Show raw roll/pitch values at top (larger font)
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
@@ -616,10 +605,8 @@ void drawOLED() {
   display.setCursor(64, 0);
   display.print("P:"); display.print(pitch, 1);
 
-  // Draw enlarged 3D cuboid representing the orientation
   draw3DCuboid(roll, pitch);
 
-  // Optional: add a small label for orientation
   display.setTextSize(1);
   display.setCursor(0, 50);
   display.print("OLEN:");
@@ -642,7 +629,7 @@ void handleClient(WiFiClient client) {
     if (client.available()) {
       char c = client.read();
       request += c;
-      timeout = millis();  // Reset timeout on data
+      timeout = millis();
       if (request.endsWith("\r\n\r\n")) break;
     }
   }
@@ -688,7 +675,6 @@ void setup() {
 
   Wire.begin();
 
-  // Initialize OLED (0.96" 128x64)
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
   }
@@ -740,12 +726,13 @@ void setup() {
     Serial.println(WiFi.localIP());
     Serial.println();
 
-    // Show fixed IP on OLED
+    // Show dynamic IP on OLED for whoever runs the code
     display.clearDisplay();
     display.setCursor(0, 10);
     display.println(F("WIFI CONNECTED!"));
     display.setCursor(0, 30);
-    display.println(F("IP: 192.168.0.89"));
+    display.print(F("IP: "));
+    display.print(WiFi.localIP()); // Dynamically prints actual network IP
     display.display();
     delay(3000);
 
@@ -766,12 +753,11 @@ void setup() {
 // ============================================================
 
 void loop() {
-  // Accept and handle client connections
+  updateOrientation();
+  drawOLED();
+
   WiFiClient client = server.available();
   if (client) {
     handleClient(client);
   }
-
-  updateOrientation();
-  drawOLED();
 }
